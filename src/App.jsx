@@ -1,3 +1,8 @@
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "./firebaseConfig";
+import { useEffect } from "react";
+import { doc, setDoc } from "firebase/firestore";
+
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell} from 'recharts';
 import { BookOpen, Play, LogIn, LogOut, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
@@ -17,8 +22,22 @@ const StudyProgressTracker = () => {
     { id: '離散', name: '離散', totalVideos: 42 }
   ];
 
+   useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'students'));
+        const data = querySnapshot.docs.map(doc => doc.data());
+        setStudents(data);
+      } catch (error) {
+        console.error("載入學生資料失敗：", error);
+      }
+    };
+
+    fetchStudents();
+  }, []);
+
   // 暱稱登入功能
-  const nicknameLogin = () => {
+  const nicknameLogin = async() => {
     if (!nickname.trim()) return;
     
     const trimmedNickname = nickname.trim();
@@ -32,6 +51,10 @@ const StudyProgressTracker = () => {
     } else {
       // 如果是新用戶，創建新的學習記錄
       const newStudent = initializeStudentProgress(trimmedNickname);
+
+      // 新增這行：寫入 Firebase
+      await setDoc(doc(db, 'students', trimmedNickname), newStudent);
+
       setStudents([...students, newStudent]);
       setCurrentUser({ nickname: trimmedNickname });
     }
