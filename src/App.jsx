@@ -1,7 +1,7 @@
-import { collection, getDocs } from "firebase/firestore";
+
 import { db } from "./firebaseConfig";
 import { useEffect } from "react";
-import { doc, setDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell} from 'recharts';
@@ -24,20 +24,40 @@ const StudyProgressTracker = () => {
 
    useEffect(() => {
     const fetchStudents = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'students'));
-        const data = querySnapshot.docs.map(doc => doc.data());
-        setStudents(data);
-      } catch (error) {
-        console.error("載入學生資料失敗：", error);
-      }
-    };
+    try {
+      const querySnapshot = await getDocs(collection(db, "students"));
+      const studentsData = querySnapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          
+          name: data.name, // 原本一定有的欄位
+          
+          progress:  // 如果後端沒 progress，就補一份 { os:0, 計組:0, ... } 的結構
+            data.progress ||
+            subjects.reduce((acc, subj) => {
+              acc[subj.id] = 0;
+              return acc;
+            }, {}),
+          
+          lastUpdated: data.lastUpdated || "",  // lastUpdated 也給個空字串備援
+        };
+      });
+      setStudents(studentsData);
+    } catch (err) {
+      console.error("❌ 讀取 students 失敗", err);
+      alert("讀取資料失敗，請稍後再試");
+    }
+  };
 
     fetchStudents();
   }, []);
 
   // 暱稱登入功能
   const nicknameLogin = async() => {
+    window.alert("⚡ nicknameLogin 被呼叫了");
+    console.log("⚡ nicknameLogin() 被呼叫了");
+
+
     if (!nickname.trim()) return;
     
     const trimmedNickname = nickname.trim();
@@ -54,6 +74,7 @@ const StudyProgressTracker = () => {
 
       // 新增這行：寫入 Firebase
       await setDoc(doc(db, 'students', trimmedNickname), newStudent);
+      console.log("✅ Firestore 寫入成功：", newStudent);
 
       setStudents([...students, newStudent]);
       setCurrentUser({ nickname: trimmedNickname });
@@ -88,15 +109,27 @@ const StudyProgressTracker = () => {
   };
 
   // 刪除自己的帳戶
-  const deleteMyAccount = () => {
-    if (currentUser) {
-      setStudents(students.filter(s => s.name !== currentUser.nickname));
-      setCurrentUser(null);
+  const deleteMyAccount = async () => {
+    if (!currentUser) return;
+
+    // 1) Firestore 刪除文件
+    try {
+      const studentRef = doc(db, "students", currentUser.nickname);
+      await deleteDoc(studentRef);
+      console.log("Firestore 刪除成功", studentRef.path);
+    } catch (err) {
+      console.error("Firestore 刪除失敗", err);
+      alert(`刪除失敗：${err.code}`);
+      return; // 刪除失敗就中斷，不清 local state
     }
+
+    // 2) 本地 state 清掉
+    setStudents(students.filter(s => s.name !== currentUser.nickname));
+    setCurrentUser(null);
   };
 
   // 更新進度（只能更新自己的）
-  const updateProgress = (subjectId, newProgress) => {
+  const updateProgress = async (subjectId, newProgress) => {
     if (!currentUser) return;
     
     const subject = subjects.find(s => s.id === subjectId);
@@ -117,24 +150,47 @@ const StudyProgressTracker = () => {
           }
         : student
     ));
+
+      try {
+        const studentRef = doc(db, 'students', currentUser.nickname);
+        await updateDoc(studentRef, {
+          [`progress.${subjectId}`]: clampedProgress,
+          lastUpdated: new Date().toLocaleString('zh-TW', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+          })
+        });
+        console.log('✅ Firestore 更新成功', subjectId, clampedProgress);
+      } catch (err) {
+        console.error('❌ Firestore 更新失敗', err);
+        alert(`更新失敗：${err.code}`);
+      }
   };
 
   // 準備圖表數據
   const getChartData = () => {
-    return subjects.map(subject => {
-      const data = { subject: subject.name, total: subject.totalVideos };
-      students.forEach(student => {
-        data[student.name] = student.progress[subject.id];
-      });
-      return data;
+  return subjects.map(subject => {
+    const data = {
+      subject: subject.name,
+      total: subject.totalVideos
+    };
+    students.forEach(student => {
+      data[student.name] = student.progress?.[subject.id] ?? 0;
     });
-  };
+    return data;
+  });
+};
 
   // 計算總體進度
   const getTotalProgress = (student) => {
-    const totalVideos = subjects.reduce((sum, subject) => sum + subject.totalVideos, 0);
-    const watchedVideos = subjects.reduce((sum, subject) => sum + student.progress[subject.id], 0);
-    return Math.round((watchedVideos / totalVideos) * 100);
+    const totalVideos = subjects.reduce((sum, s) => sum + s.totalVideos, 0);
+    const watched = subjects.reduce(
+      (sum, s) => sum + (student.progress?.[s.id] ?? 0),
+      0
+    );
+    return totalVideos > 0
+      ? Math.round((watched / totalVideos) * 100)
+      : 0;
   };
 
   // 獲取當前用戶的進度數據
