@@ -53,8 +53,8 @@ const StudyProgressTracker = () => {
 
   // 暱稱登入功能
   const nicknameLogin = async() => {
-    window.alert("⚡ nicknameLogin 被呼叫了");
-    console.log("⚡ nicknameLogin() 被呼叫了");
+    // window.alert("⚡ nicknameLogin 被呼叫了");
+    console.log("nicknameLogin() 被呼叫了");
 
 
     if (!nickname.trim()) return;
