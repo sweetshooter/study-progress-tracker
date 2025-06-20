@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { User, BookOpen, Play, LogIn, LogOut, Users, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell} from 'recharts';
+import { BookOpen, Play, LogIn, LogOut, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
 
 const StudyProgressTracker = () => {
   const [students, setStudents] = useState([]);
