@@ -1,9 +1,9 @@
 
 import { db } from "./firebaseConfig";
-import { useEffect } from "react";
+import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
-import React, { useState } from 'react';
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell} from 'recharts';
 import { BookOpen, Play, LogIn, LogOut, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
 
@@ -22,35 +22,34 @@ const StudyProgressTracker = () => {
     { id: '離散', name: '離散', totalVideos: 42 }
   ];
 
-   useEffect(() => {
-    const fetchStudents = async () => {
+   
+    const fetchStudents = useCallback(async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "students"));
-      const studentsData = querySnapshot.docs.map((docSnap) => {
+      const studentsData = querySnapshot.docs.map(docSnap => {
         const data = docSnap.data();
+        const progress = data.progress ||
+          subjects.reduce((acc, subj) => {
+            acc[subj.id] = 0;
+            return acc;
+          }, {});
         return {
-          
-          name: data.name, // 原本一定有的欄位
-          
-          progress:  // 如果後端沒 progress，就補一份 { os:0, 計組:0, ... } 的結構
-            data.progress ||
-            subjects.reduce((acc, subj) => {
-              acc[subj.id] = 0;
-              return acc;
-            }, {}),
-          
-          lastUpdated: data.lastUpdated || "",  // lastUpdated 也給個空字串備援
+          name: data.name,
+          progress,
+          lastUpdated: data.lastUpdated || "",
         };
       });
       setStudents(studentsData);
     } catch (err) {
-      console.error("❌ 讀取 students 失敗", err);
+      console.error("讀取 students 失敗", err);
       alert("讀取資料失敗，請稍後再試");
     }
-  };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, subjects]);
+
+  // useEffect 只需依賴 fetchStudents
+  useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [fetchStudents]);
 
   // 暱稱登入功能
   const nicknameLogin = async() => {
