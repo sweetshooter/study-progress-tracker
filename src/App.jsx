@@ -44,7 +44,7 @@ const StudyProgressTracker = () => {
       console.error("讀取 students 失敗", err);
       alert("讀取資料失敗，請稍後再試");
     }
-  }, [db, subjects]);
+  }, [subjects]);
 
   // useEffect 只需依賴 fetchStudents
   useEffect(() => {
