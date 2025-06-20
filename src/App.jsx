@@ -1,6 +1,6 @@
 
 import { db } from "./firebaseConfig";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
 
@@ -13,14 +13,14 @@ const StudyProgressTracker = () => {
   const [nickname, setNickname] = useState('');
 
   // 預設科目和影片數量
-  const subjects = [
+  const subjects = useMemo(() => [
     { id: 'OS', name: 'OS', totalVideos: 58 },
     { id: '計組', name: '計組', totalVideos: 69 },
     { id: '資結', name: '資結', totalVideos: 67 },
     { id: '演算法', name: '演算法', totalVideos: 16 },
     { id: '線代', name: '線代', totalVideos: 42 },
     { id: '離散', name: '離散', totalVideos: 42 }
-  ];
+  ],[]);
 
    
     const fetchStudents = useCallback(async () => {
