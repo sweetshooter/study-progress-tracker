@@ -48,7 +48,7 @@ const StudyProgressTracker = () => {
       alert("讀取資料失敗，請稍後再試");
     }
   };
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchStudents();
   }, []);
 
